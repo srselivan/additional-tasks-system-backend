@@ -9,11 +9,11 @@ type AnswersRepo interface {
 	GetById(
 		ctx context.Context,
 		id int64,
-	) (models.Task, error)
+	) (models.Answer, error)
 	GetList(
 		ctx context.Context,
 		opts AnswersRepoGetListOpts,
-	) ([]models.Task, error)
+	) ([]models.Answer, error)
 	GetCount(
 		ctx context.Context,
 		groupId int64,
@@ -21,11 +21,11 @@ type AnswersRepo interface {
 	Create(
 		ctx context.Context,
 		opts AnswersRepoCreateOpts,
-	) (models.Task, error)
+	) (models.Answer, error)
 	Update(
 		ctx context.Context,
 		opts AnswersRepoUpdateOpts,
-	) (models.Task, error)
+	) (models.Answer, error)
 	Delete(
 		ctx context.Context,
 		id int64,

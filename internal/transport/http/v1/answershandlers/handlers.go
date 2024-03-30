@@ -20,12 +20,12 @@ func (h *handler) getById(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, `Path parameter <id> empty or not a number`)
 	}
 
-	task, err := h.service.GetById(ctx.UserContext(), int64(id))
+	answer, err := h.service.GetById(ctx.UserContext(), int64(id))
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetById: %v", err))
 	}
 
-	responseBytes, err := jsoniter.Marshal(task)
+	responseBytes, err := jsoniter.Marshal(answer)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
 	}
@@ -50,7 +50,7 @@ func (h *handler) getList(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, `Query parameter <offset> missed or equal to zero`)
 	}
 
-	tasks, err := h.service.GetList(ctx.UserContext(), services.AnswerServiceGetListOpts{
+	answers, err := h.service.GetList(ctx.UserContext(), services.AnswerServiceGetListOpts{
 		GroupId: int64(groupId),
 		Limit:   int64(limit),
 		Offset:  int64(offset),
@@ -65,8 +65,8 @@ func (h *handler) getList(ctx *fiber.Ctx) error {
 	}
 
 	responseBytes, err := jsoniter.Marshal(getListResponse{
-		Tasks: tasks,
-		Count: count,
+		Answers: answers,
+		Count:   count,
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))

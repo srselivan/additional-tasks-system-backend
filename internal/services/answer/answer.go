@@ -28,19 +28,19 @@ func New(
 func (s *Service) GetById(
 	ctx context.Context,
 	id int64,
-) (models.Task, error) {
-	task, err := s.repo.GetById(ctx, id)
+) (models.Answer, error) {
+	answer, err := s.repo.GetById(ctx, id)
 	if err != nil {
-		return models.Task{}, fmt.Errorf("s.repo.GetById: %w", err)
+		return models.Answer{}, fmt.Errorf("s.repo.GetById: %w", err)
 	}
-	return task, nil
+	return answer, nil
 }
 
 func (s *Service) GetList(
 	ctx context.Context,
 	opts services.AnswerServiceGetListOpts,
-) ([]models.Task, error) {
-	tasks, err := s.repo.GetList(ctx, repo.AnswersRepoGetListOpts{
+) ([]models.Answer, error) {
+	answers, err := s.repo.GetList(ctx, repo.AnswersRepoGetListOpts{
 		GroupId: opts.GroupId,
 		Limit:   opts.Limit,
 		Offset:  opts.Offset,
@@ -48,7 +48,7 @@ func (s *Service) GetList(
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.GetList: %w", err)
 	}
-	return tasks, nil
+	return answers, nil
 }
 
 func (s *Service) GetCount(
@@ -65,30 +65,30 @@ func (s *Service) GetCount(
 func (s *Service) Create(
 	ctx context.Context,
 	opts services.AnswerServiceCreateOpts,
-) (models.Task, error) {
-	task, err := s.repo.Create(ctx, repo.AnswersRepoCreateOpts{
+) (models.Answer, error) {
+	answer, err := s.repo.Create(ctx, repo.AnswersRepoCreateOpts{
 		GroupId: opts.GroupId,
 		Comment: opts.Comment,
 	})
 	if err != nil {
-		return models.Task{}, fmt.Errorf("s.repo.Create: %w", err)
+		return models.Answer{}, fmt.Errorf("s.repo.Create: %w", err)
 	}
-	return task, nil
+	return answer, nil
 }
 
 func (s *Service) Update(
 	ctx context.Context,
 	opts services.AnswerServiceUpdateOpts,
-) (models.Task, error) {
-	task, err := s.repo.Update(ctx, repo.AnswersRepoUpdateOpts{
+) (models.Answer, error) {
+	answer, err := s.repo.Update(ctx, repo.AnswersRepoUpdateOpts{
 		Id:      opts.Id,
 		GroupId: opts.GroupId,
 		Comment: opts.Comment,
 	})
 	if err != nil {
-		return models.Task{}, fmt.Errorf("s.repo.Update: %w", err)
+		return models.Answer{}, fmt.Errorf("s.repo.Update: %w", err)
 	}
-	return task, nil
+	return answer, nil
 }
 
 func (s *Service) Delete(

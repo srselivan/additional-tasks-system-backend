@@ -5,8 +5,8 @@ import (
 )
 
 type getListResponse struct {
-	Tasks []models.Answer `json:"data"`
-	Count int64           `json:"count"`
+	Answers []models.Answer `json:"data"`
+	Count   int64           `json:"count"`
 }
 
 type createRequest struct {
