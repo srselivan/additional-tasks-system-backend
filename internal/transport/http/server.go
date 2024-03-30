@@ -2,6 +2,7 @@ package http
 
 import (
 	"backend/internal/services"
+	"backend/internal/transport/http/v1/answershandlers"
 	"backend/internal/transport/http/v1/taskshandlers"
 	"context"
 	"errors"
@@ -12,26 +13,29 @@ import (
 )
 
 type Config struct {
-	Addr        string
-	TaskService services.TaskService
-	Log         *zerolog.Logger
+	Addr          string
+	TaskService   services.TaskService
+	AnswerService services.AnswerService
+	Log           *zerolog.Logger
 }
 
 type Server struct {
 	app  *fiber.App
 	addr string
 
-	taskService services.TaskService
+	taskService   services.TaskService
+	answerService services.AnswerService
 
 	log *zerolog.Logger
 }
 
 func NewServer(cfg *Config) *Server {
 	s := &Server{
-		app:         nil,
-		addr:        cfg.Addr,
-		taskService: cfg.TaskService,
-		log:         cfg.Log,
+		app:           nil,
+		addr:          cfg.Addr,
+		taskService:   cfg.TaskService,
+		answerService: cfg.AnswerService,
+		log:           cfg.Log,
 	}
 
 	s.app = fiber.New(fiber.Config{
@@ -58,6 +62,7 @@ func (s *Server) init() {
 
 	v1Group := apiGroup.Group("/v1")
 	taskshandlers.New(v1Group, taskshandlers.Config{TaskService: s.taskService}, s.log)
+	answershandlers.New(v1Group, answershandlers.Config{AnswerService: s.answerService}, s.log)
 }
 
 func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {

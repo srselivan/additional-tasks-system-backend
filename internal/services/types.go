@@ -26,3 +26,20 @@ type (
 		Cost          int64
 	}
 )
+
+type (
+	AnswerServiceGetListOpts struct {
+		GroupId int64
+		Limit   int64
+		Offset  int64
+	}
+	AnswerServiceCreateOpts struct {
+		GroupId int64
+		Comment string
+	}
+	AnswerServiceUpdateOpts struct {
+		Id      int64
+		GroupId int64
+		Comment string
+	}
+)
