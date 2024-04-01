@@ -42,3 +42,14 @@ create table if not exists public.group
     updated_at timestamptz
 );
 
+create table if not exists public.file
+(
+    id         bigserial primary key,
+    name       text        not null,
+    filename   text        not null,
+    filepath   text        not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
+    task_id    bigint,
+    answer_id  bigint
+);

@@ -57,3 +57,13 @@ type (
 		Name string
 	}
 )
+
+type (
+	FileServiceCreateOpts struct {
+		Name     string
+		Filename string
+		Filepath string
+		TaskId   *int64
+		AnswerId *int64
+	}
+)

@@ -31,3 +31,9 @@ type GroupService interface {
 	Update(ctx context.Context, opts GroupServiceUpdateOpts) (models.Group, error)
 	Delete(ctx context.Context, id int64) error
 }
+
+type FileService interface {
+	GetById(ctx context.Context, id int64) (models.File, error)
+	Create(ctx context.Context, opts FileServiceCreateOpts) (models.File, error)
+	Delete(ctx context.Context, id int64) error
+}
