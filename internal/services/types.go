@@ -43,3 +43,17 @@ type (
 		Comment string
 	}
 )
+
+type (
+	GroupServiceGetListOpts struct {
+		Limit  int64
+		Offset int64
+	}
+	GroupServiceCreateOpts struct {
+		Name string
+	}
+	GroupServiceUpdateOpts struct {
+		Id   int64
+		Name string
+	}
+)

@@ -22,3 +22,12 @@ type AnswerService interface {
 	Update(ctx context.Context, opts AnswerServiceUpdateOpts) (models.Answer, error)
 	Delete(ctx context.Context, id int64) error
 }
+
+type GroupService interface {
+	GetById(ctx context.Context, id int64) (models.Group, error)
+	GetList(ctx context.Context, opts GroupServiceGetListOpts) ([]models.Group, error)
+	GetCount(ctx context.Context) (int64, error)
+	Create(ctx context.Context, opts GroupServiceCreateOpts) (models.Group, error)
+	Update(ctx context.Context, opts GroupServiceUpdateOpts) (models.Group, error)
+	Delete(ctx context.Context, id int64) error
+}
