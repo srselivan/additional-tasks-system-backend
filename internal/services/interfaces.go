@@ -37,3 +37,7 @@ type FileService interface {
 	Create(ctx context.Context, opts FileServiceCreateOpts) (models.File, error)
 	Delete(ctx context.Context, id int64) error
 }
+
+type UserService interface {
+	Create(ctx context.Context, opts UserServiceCreateOpts) (models.User, error)
+}

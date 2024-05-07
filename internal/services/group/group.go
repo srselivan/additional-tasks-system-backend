@@ -1,4 +1,4 @@
-package answer
+package group
 
 import (
 	"backend/internal/models"

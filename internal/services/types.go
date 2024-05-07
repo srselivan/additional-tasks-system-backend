@@ -67,3 +67,18 @@ type (
 		AnswerId *int64
 	}
 )
+
+type (
+	UserServiceCreateOpts struct {
+		GroupId    int64
+		Email      string
+		Password   string
+		FirstName  string
+		LastName   string
+		MiddleName *string
+	}
+	UserServiceUpdateOpts struct {
+	}
+	UserServiceGetByCredentialsOpts struct {
+	}
+)

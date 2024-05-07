@@ -3,6 +3,9 @@ package http
 import (
 	"backend/internal/services"
 	"backend/internal/transport/http/v1/answershandlers"
+	"backend/internal/transport/http/v1/authhandlers"
+	"backend/internal/transport/http/v1/fileshandlers"
+	"backend/internal/transport/http/v1/groupshandlers"
 	"backend/internal/transport/http/v1/taskshandlers"
 	"context"
 	"errors"
@@ -16,6 +19,9 @@ type Config struct {
 	Addr          string
 	TaskService   services.TaskService
 	AnswerService services.AnswerService
+	FileService   services.FileService
+	GroupService  services.GroupService
+	UserService   services.UserService
 	Log           *zerolog.Logger
 }
 
@@ -25,6 +31,9 @@ type Server struct {
 
 	taskService   services.TaskService
 	answerService services.AnswerService
+	fileService   services.FileService
+	groupService  services.GroupService
+	userService   services.UserService
 
 	log *zerolog.Logger
 }
@@ -35,11 +44,15 @@ func NewServer(cfg *Config) *Server {
 		addr:          cfg.Addr,
 		taskService:   cfg.TaskService,
 		answerService: cfg.AnswerService,
+		fileService:   cfg.FileService,
+		groupService:  cfg.GroupService,
+		userService:   cfg.UserService,
 		log:           cfg.Log,
 	}
 
 	s.app = fiber.New(fiber.Config{
-		ErrorHandler: s.errorHandler,
+		ErrorHandler:          s.errorHandler,
+		DisableStartupMessage: true,
 	})
 
 	s.init()
@@ -63,6 +76,9 @@ func (s *Server) init() {
 	v1Group := apiGroup.Group("/v1")
 	taskshandlers.New(v1Group, taskshandlers.Config{TaskService: s.taskService}, s.log)
 	answershandlers.New(v1Group, answershandlers.Config{AnswerService: s.answerService}, s.log)
+	fileshandlers.New(v1Group, fileshandlers.Config{FileService: s.fileService}, s.log)
+	groupshandlers.New(v1Group, groupshandlers.Config{GroupService: s.groupService}, s.log)
+	authhandlers.New(v1Group, authhandlers.Config{UserService: s.userService}, s.log)
 }
 
 func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {
@@ -85,7 +101,10 @@ func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {
 		case fiber.StatusInternalServerError:
 			return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong")
 		default:
-			return err
+			if err = ctx.SendString(err.Error()); err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong")
+			}
+			return nil
 		}
 	}
 
