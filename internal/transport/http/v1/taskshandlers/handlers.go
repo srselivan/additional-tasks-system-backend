@@ -2,16 +2,18 @@ package taskshandlers
 
 import (
 	"backend/internal/services"
+	"backend/internal/transport/http/auth"
 	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 )
 
 type handler struct {
-	service services.TaskService
-	log     *zerolog.Logger
+	service     services.TaskService
+	fileService services.FileService
+	log         *zerolog.Logger
 }
 
 func (h *handler) getById(ctx *fiber.Ctx) error {
@@ -25,7 +27,15 @@ func (h *handler) getById(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetById: %v", err))
 	}
 
-	responseBytes, err := jsoniter.Marshal(task)
+	attachedFiles, err := h.fileService.GetByTaskId(ctx.UserContext(), task.Id)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetById: %v", err))
+	}
+
+	responseBytes, err := jsoniter.Marshal(getByIdResponse{
+		Task:          task,
+		AttachedFiles: attachedFiles,
+	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
 	}
@@ -38,30 +48,65 @@ func (h *handler) getById(ctx *fiber.Ctx) error {
 }
 
 func (h *handler) getList(ctx *fiber.Ctx) error {
-	groupId := 0
+	claims, err := auth.GetClaimsFromCtx(ctx)
+	if err != nil {
+		return fmt.Errorf("auth.GetClaimsFromCtx: %w", err)
+	}
 
 	limit := ctx.QueryInt("limit")
 	if limit == 0 {
 		return fiber.NewError(fiber.StatusBadRequest, `Query parameter <limit> missed or equal to zero`)
 	}
 
-	offset := ctx.QueryInt("offset")
-	if offset == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, `Query parameter <offset> missed or equal to zero`)
+	offset := ctx.QueryInt("offset", -1)
+	if offset == -1 {
+		return fiber.NewError(fiber.StatusBadRequest, `Query parameter <offset> missed`)
 	}
 
-	tasks, err := h.service.GetList(ctx.UserContext(), services.TaskServiceGetListOpts{
-		GroupId: int64(groupId),
+	creator := ctx.QueryBool("creator")
+	if creator {
+		tasks, err := h.service.GetListForCreator(ctx.UserContext(), services.TaskServiceGetListForCreatorOpts{
+			CreatedBy: claims.UserId,
+			Limit:     int64(limit),
+			Offset:    int64(offset),
+		})
+		if err != nil {
+			return fmt.Errorf("h.service.GetListForCreator: %w", err)
+		}
+
+		count, err := h.service.GetCountForCreator(ctx.UserContext(), claims.UserId)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetCountForCreator: %v", err))
+		}
+
+		responseBytes, err := jsoniter.Marshal(getListResponse{
+			Tasks: tasks,
+			Count: count,
+		})
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
+		}
+
+		if err = ctx.Status(fiber.StatusOK).Send(responseBytes); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
+		}
+
+		return nil
+	}
+
+	tasks, err := h.service.GetListForUser(ctx.UserContext(), services.TaskServiceGetListForUserOpts{
+		UserId:  claims.UserId,
+		GroupId: lo.FromPtr(claims.GroupId),
 		Limit:   int64(limit),
 		Offset:  int64(offset),
 	})
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetList: %v", err))
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetListForUser: %v", err))
 	}
 
-	count, err := h.service.GetCount(ctx.UserContext(), int64(groupId))
+	count, err := h.service.GetCountForUser(ctx.UserContext(), claims.UserId, lo.FromPtr(claims.GroupId))
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetCount: %v", err))
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetCountForUser: %v", err))
 	}
 
 	responseBytes, err := jsoniter.Marshal(getListResponse{
@@ -80,26 +125,36 @@ func (h *handler) getList(ctx *fiber.Ctx) error {
 }
 
 func (h *handler) create(ctx *fiber.Ctx) error {
-	groupId := 0
+	claims, err := auth.GetClaimsFromCtx(ctx)
+	if err != nil {
+		return fmt.Errorf("auth.GetClaimsFromCtx: %w", err)
+	}
 
 	var req createRequest
-	if err := jsoniter.Unmarshal(ctx.Body(), &req); err != nil {
+	if err = jsoniter.Unmarshal(ctx.Body(), &req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("jsoniter.Unmarshal: %v", err))
 	}
 
-	_, err := h.service.Create(ctx.UserContext(), services.TaskServiceCreateOpts{
-		GroupId:       int64(groupId),
+	task, err := h.service.Create(ctx.UserContext(), services.TaskServiceCreateOpts{
+		GroupIds:      req.GroupIds,
+		UserIds:       req.UserIds,
 		Title:         req.Title,
 		Text:          req.Text,
 		EffectiveFrom: req.EffectiveFrom,
 		EffectiveTill: req.EffectiveTill,
-		Cost:          req.Cost,
+		FileIds:       req.FileIds,
+		CreatedBy:     claims.UserId,
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Create: %v", err))
 	}
 
-	if err = ctx.Status(fiber.StatusCreated).Send(nil); err != nil {
+	responseBytes, err := jsoniter.Marshal(task)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
+	}
+
+	if err = ctx.Status(fiber.StatusCreated).Send(responseBytes); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
 	}
 

@@ -1,14 +1,18 @@
 package http
 
 import (
+	"backend/internal/models"
 	"backend/internal/services"
 	"backend/internal/transport/http/v1/answershandlers"
 	"backend/internal/transport/http/v1/authhandlers"
 	"backend/internal/transport/http/v1/fileshandlers"
 	"backend/internal/transport/http/v1/groupshandlers"
+	"backend/internal/transport/http/v1/markshandlers"
 	"backend/internal/transport/http/v1/taskshandlers"
+	"backend/internal/transport/http/v1/usershandlers"
 	"context"
 	"errors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -22,6 +26,9 @@ type Config struct {
 	FileService   services.FileService
 	GroupService  services.GroupService
 	UserService   services.UserService
+	AuthService   services.AuthService
+	MarkService   services.MarkService
+	JWTConfig     models.JWTConfig
 	Log           *zerolog.Logger
 }
 
@@ -34,6 +41,10 @@ type Server struct {
 	fileService   services.FileService
 	groupService  services.GroupService
 	userService   services.UserService
+	authService   services.AuthService
+	markService   services.MarkService
+
+	jwtConfig models.JWTConfig
 
 	log *zerolog.Logger
 }
@@ -47,6 +58,9 @@ func NewServer(cfg *Config) *Server {
 		fileService:   cfg.FileService,
 		groupService:  cfg.GroupService,
 		userService:   cfg.UserService,
+		authService:   cfg.AuthService,
+		markService:   cfg.MarkService,
+		jwtConfig:     cfg.JWTConfig,
 		log:           cfg.Log,
 	}
 
@@ -70,15 +84,29 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) init() {
 	s.app.Use(cors.New())
+	s.app.Use(logger.New())
 
 	apiGroup := s.app.Group("/api")
 
 	v1Group := apiGroup.Group("/v1")
-	taskshandlers.New(v1Group, taskshandlers.Config{TaskService: s.taskService}, s.log)
-	answershandlers.New(v1Group, answershandlers.Config{AnswerService: s.answerService}, s.log)
-	fileshandlers.New(v1Group, fileshandlers.Config{FileService: s.fileService}, s.log)
+
+	authhandlers.New(v1Group, authhandlers.Config{UserService: s.userService, AuthService: s.authService}, s.log)
+	taskshandlers.New(v1Group, taskshandlers.Config{
+		TaskService: s.taskService,
+		JWTConfig:   s.jwtConfig,
+		FileService: s.fileService,
+	}, s.log)
+	answershandlers.New(v1Group, answershandlers.Config{
+		AnswerService: s.answerService,
+		JWTConfig:     s.jwtConfig,
+		FileService:   s.fileService,
+		UserService:   s.userService,
+		MarkService:   s.markService,
+	}, s.log)
+	fileshandlers.New(v1Group, fileshandlers.Config{FileService: s.fileService, JWTConfig: s.jwtConfig}, s.log)
+	markshandlers.New(v1Group, markshandlers.Config{MarkService: s.markService, JWTConfig: s.jwtConfig}, s.log)
+	usershandlers.New(v1Group, usershandlers.Config{UserService: s.userService, JWTConfig: s.jwtConfig}, s.log)
 	groupshandlers.New(v1Group, groupshandlers.Config{GroupService: s.groupService}, s.log)
-	authhandlers.New(v1Group, authhandlers.Config{UserService: s.userService}, s.log)
 }
 
 func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {
@@ -101,7 +129,7 @@ func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {
 		case fiber.StatusInternalServerError:
 			return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong")
 		default:
-			if err = ctx.SendString(err.Error()); err != nil {
+			if err = ctx.Status(fiberError.Code).SendString(err.Error()); err != nil {
 				return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong")
 			}
 			return nil

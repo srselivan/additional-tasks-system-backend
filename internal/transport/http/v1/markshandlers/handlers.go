@@ -1,16 +1,16 @@
-package groupshandlers
+package markshandlers
 
 import (
 	"backend/internal/services"
+	"backend/internal/transport/http/auth"
 	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 )
 
 type handler struct {
-	service services.GroupService
+	service services.MarkService
 	log     *zerolog.Logger
 }
 
@@ -20,12 +20,12 @@ func (h *handler) getById(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, `Path parameter <id> empty or not a number`)
 	}
 
-	group, err := h.service.GetById(ctx.UserContext(), int64(id))
+	mark, err := h.service.GetById(ctx.UserContext(), int64(id))
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetById: %v", err))
 	}
 
-	responseBytes, err := jsoniter.Marshal(group)
+	responseBytes, err := jsoniter.Marshal(mark)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
 	}
@@ -48,22 +48,33 @@ func (h *handler) getList(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, `Query parameter <offset> missed`)
 	}
 
-	groups, err := h.service.GetList(ctx.UserContext(), services.GroupServiceGetListOpts{
+	taskId := ctx.QueryInt("taskId", -1)
+	if taskId != -1 {
+		return nil
+	}
+
+	claims, err := auth.GetClaimsFromCtx(ctx)
+	if err != nil {
+		return fmt.Errorf("auth.GetClaimsFromCtx: %v", err)
+	}
+
+	marks, err := h.service.GetListByUserId(ctx.UserContext(), services.MarkServiceGetListByUserIdOpts{
+		UserId: claims.UserId,
 		Limit:  int64(limit),
 		Offset: int64(offset),
 	})
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetList: %v", err))
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetListByUserId: %v", err))
 	}
 
-	count, err := h.service.GetCount(ctx.UserContext())
+	count, err := h.service.GetCountByUserId(ctx.UserContext(), claims.UserId)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetCount: %v", err))
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetCountByUserId: %v", err))
 	}
 
 	responseBytes, err := jsoniter.Marshal(getListResponse{
-		Groups: groups,
-		Count:  count,
+		Marks: marks,
+		Count: count,
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
@@ -77,19 +88,26 @@ func (h *handler) getList(ctx *fiber.Ctx) error {
 }
 
 func (h *handler) create(ctx *fiber.Ctx) error {
-	var req createRequest
+	var req createMarkRequest
 	if err := jsoniter.Unmarshal(ctx.Body(), &req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("jsoniter.Unmarshal: %v", err))
 	}
 
-	_, err := h.service.Create(ctx.UserContext(), services.GroupServiceCreateOpts{
-		Name: req.Name,
+	mark, err := h.service.Create(ctx.UserContext(), services.MarkServiceCreateOpts{
+		AnswerId: req.AnswerId,
+		Mark:     req.Mark,
+		Comment:  req.Comment,
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Create: %v", err))
 	}
 
-	if err = ctx.Status(fiber.StatusCreated).Send(nil); err != nil {
+	responseBytes, err := jsoniter.Marshal(mark)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
+	}
+
+	if err = ctx.Status(fiber.StatusCreated).Send(responseBytes); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
 	}
 
@@ -102,37 +120,26 @@ func (h *handler) update(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, `Path parameter <id> empty or not a number`)
 	}
 
-	var req updateRequest
+	var req updateMarkRequest
 	if err = jsoniter.Unmarshal(ctx.Body(), &req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("jsoniter.Unmarshal: %v", err))
 	}
 
-	_, err = h.service.Update(ctx.UserContext(), services.GroupServiceUpdateOpts{
-		Id:   int64(id),
-		Name: req.Name,
+	mark, err := h.service.Update(ctx.UserContext(), services.MarkServiceUpdateOpts{
+		Id:      int64(id),
+		Mark:    req.Mark,
+		Comment: req.Comment,
 	})
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Create: %v", err))
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Update: %v", err))
 	}
 
-	if err = ctx.Status(fiber.StatusAccepted).Send(nil); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
-	}
-
-	return nil
-}
-
-func (h *handler) delete(ctx *fiber.Ctx) error {
-	id, err := ctx.ParamsInt("id")
+	responseBytes, err := jsoniter.Marshal(mark)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, `Path parameter <id> empty or not a number`)
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
 	}
 
-	if err = h.service.Delete(ctx.UserContext(), int64(id)); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Delete: %v", err))
-	}
-
-	if err = ctx.Status(fiber.StatusAccepted).Send(nil); err != nil {
+	if err = ctx.Status(fiber.StatusCreated).Send(responseBytes); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
 	}
 

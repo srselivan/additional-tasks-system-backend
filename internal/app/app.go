@@ -2,16 +2,9 @@ package app
 
 import (
 	"backend/config"
-	"backend/internal/services/answer"
-	answerpgrepo "backend/internal/services/answer/repo/pg"
-	"backend/internal/services/file"
-	filepgrepo "backend/internal/services/file/repo/pg"
-	"backend/internal/services/group"
-	grouppgrepo "backend/internal/services/group/repo/pg"
-	"backend/internal/services/task"
-	taskpgrepo "backend/internal/services/task/repo/pg"
-	"backend/internal/services/user"
-	userpgrepo "backend/internal/services/user/repo/pg"
+	"backend/internal/models"
+	repos "backend/internal/repo/pg"
+	"backend/internal/services"
 	"backend/internal/transport/http"
 	"backend/pkg/logger"
 	"backend/pkg/postgres"
@@ -33,17 +26,39 @@ func Run(cfg *config.Config) {
 	//	log.Fatal().Err(err).Msg("Run postgres migrations error")
 	//}
 
-	answersRepo := answerpgrepo.NewAnswersRepo(pgConn)
-	filesRepo := filepgrepo.NewFilesRepo(pgConn)
-	groupsRepo := grouppgrepo.NewGroupsRepo(pgConn)
-	tasksRepo := taskpgrepo.NewTasksRepo(pgConn)
-	usersRepo := userpgrepo.NewUsersRepo(pgConn)
+	if _, err = os.Stat("storage"); os.IsNotExist(err) {
+		if err = os.Mkdir("storage", 0777); err != nil {
+			panic(err)
+		}
+	}
 
-	answerService := answer.New(answersRepo, log)
-	fileService := file.New(filesRepo, log)
-	groupService := group.New(groupsRepo, log)
-	taskService := task.New(tasksRepo, log)
-	userService := user.New(usersRepo, log)
+	answersRepo := repos.NewAnswersRepo(pgConn)
+	filesRepo := repos.NewFilesRepo(pgConn)
+	groupsRepo := repos.NewGroupsRepo(pgConn)
+	tasksRepo := repos.NewTasksRepo(pgConn)
+	taskLinksRepo := repos.NewTaskLinksRepo(pgConn)
+	usersRepo := repos.NewUsersRepo(pgConn)
+	authRepo := repos.NewAuthRepo(pgConn)
+	marksRepo := repos.NewMarksRepo(pgConn)
+
+	fileService := services.NewFileServiceImpl(filesRepo, log)
+	answerService := services.NewAnswerServiceImpl(answersRepo, fileService, log)
+	groupService := services.NewGroupServiceImpl(groupsRepo, log)
+	taskLinksService := services.NewTaskLinksServiceImpl(taskLinksRepo, log)
+	taskService := services.NewTaskServiceImpl(tasksRepo, fileService, taskLinksService, log)
+	userService := services.NewUserServiceImpl(usersRepo, log)
+	marksService := services.NewMarkServiceImpl(marksRepo, log)
+	authService := services.NewAuthServiceImpl(
+		authRepo,
+		models.JWTConfig{
+			JWTAccessExpirationTime:  cfg.JWT.JWTAccessTokenExpTime,
+			JWTRefreshExpirationTime: cfg.JWT.JWTRefreshTokenExpTime,
+			JWTAccessSecretKey:       cfg.JWT.JWTAccessSecretKey,
+			JWTRefreshSecretKey:      cfg.JWT.JWTRefreshSecretKey,
+		},
+		userService,
+		log,
+	)
 
 	server := http.NewServer(&http.Config{
 		Addr:          cfg.HTTPServer.Addr,
@@ -52,7 +67,15 @@ func Run(cfg *config.Config) {
 		FileService:   fileService,
 		GroupService:  groupService,
 		UserService:   userService,
-		Log:           log,
+		AuthService:   authService,
+		MarkService:   marksService,
+		JWTConfig: models.JWTConfig{
+			JWTAccessExpirationTime:  cfg.JWT.JWTAccessTokenExpTime,
+			JWTRefreshExpirationTime: cfg.JWT.JWTRefreshTokenExpTime,
+			JWTAccessSecretKey:       cfg.JWT.JWTAccessSecretKey,
+			JWTRefreshSecretKey:      cfg.JWT.JWTRefreshSecretKey,
+		},
+		Log: log,
 	})
 
 	go func() {

@@ -1,4 +1,4 @@
-package fileshandlers
+package usershandlers
 
 import (
 	"backend/internal/models"
@@ -12,17 +12,17 @@ import (
 )
 
 type Config struct {
-	FileService services.FileService
+	UserService services.UserService
 	JWTConfig   models.JWTConfig
 }
 
 func New(router fiber.Router, cfg Config, log *zerolog.Logger) {
 	h := handler{
-		service: cfg.FileService,
+		service: cfg.UserService,
 		log:     log,
 	}
 
-	answerGroup := router.Group("/file", jwtware.New(jwtware.Config{
+	userGroup := router.Group("/user", jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{
 			Key: []byte(cfg.JWTConfig.JWTAccessSecretKey),
 		},
@@ -46,8 +46,6 @@ func New(router fiber.Router, cfg Config, log *zerolog.Logger) {
 			return ctx.Next()
 		},
 	}))
-	answerGroup.Get("/:id", h.getById)
-	answerGroup.Post("/", h.create)
-	answerGroup.Delete("/:id", h.delete)
-	answerGroup.Get("/download/:id", h.download)
+	userGroup.Get("/", h.getList)
+	userGroup.Get("/:id", h.getById)
 }

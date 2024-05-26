@@ -60,7 +60,7 @@ func (h *handler) create(ctx *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.SaveFile: %v", err))
 		}
 
-		_, err = h.service.Create(ctx.UserContext(), services.FileServiceCreateOpts{
+		createdFile, err := h.service.Create(ctx.UserContext(), services.FileServiceCreateOpts{
 			Name:     originalName,
 			Filename: saveName,
 			Filepath: savePath,
@@ -70,13 +70,20 @@ func (h *handler) create(ctx *fiber.Ctx) error {
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.Create: %v", err))
 		}
+
+		responseBytes, err := jsoniter.Marshal(createdFile)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("jsoniter.Marshal: %v", err))
+		}
+
+		if err = ctx.Status(fiber.StatusCreated).Send(responseBytes); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
+		}
+
+		return nil
 	}
 
-	if err = ctx.Status(fiber.StatusCreated).Send(nil); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
-	}
-
-	return nil
+	return fiber.NewError(fiber.StatusBadRequest, "no files in request")
 }
 
 func (h *handler) delete(ctx *fiber.Ctx) error {
@@ -91,6 +98,28 @@ func (h *handler) delete(ctx *fiber.Ctx) error {
 
 	if err = ctx.Status(fiber.StatusAccepted).Send(nil); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Send: %v", err))
+	}
+
+	return nil
+}
+
+func (h *handler) download(ctx *fiber.Ctx) error {
+	id, err := ctx.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, `Path parameter <id> empty or not a number`)
+	}
+
+	file, err := h.service.GetById(ctx.UserContext(), int64(id))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("h.service.GetById: %v", err))
+	}
+
+	//if err = ctx.Download(filepath.Join(file.Filepath, file.Filename), file.Name); err != nil {
+	//	return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Download: %v", err))
+	//}
+
+	if err = ctx.SendFile(filepath.Join(file.Filepath, file.Filename)); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("ctx.Download: %v", err))
 	}
 
 	return nil

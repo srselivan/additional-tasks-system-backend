@@ -3,18 +3,26 @@ package services
 import "time"
 
 type (
-	TaskServiceGetListOpts struct {
+	TaskServiceGetListForCreatorOpts struct {
+		CreatedBy int64
+		Limit     int64
+		Offset    int64
+	}
+	TaskServiceGetListForUserOpts struct {
+		UserId  int64
 		GroupId int64
 		Limit   int64
 		Offset  int64
 	}
 	TaskServiceCreateOpts struct {
-		GroupId       int64
+		GroupIds      []int64
+		UserIds       []int64
 		Title         string
-		Text          string
-		EffectiveFrom time.Time
+		Text          *string
+		CreatedBy     int64
+		EffectiveFrom *time.Time
 		EffectiveTill time.Time
-		Cost          int64
+		FileIds       []int64
 	}
 	TaskServiceUpdateOpts struct {
 		Id            int64
@@ -29,18 +37,20 @@ type (
 
 type (
 	AnswerServiceGetListOpts struct {
-		GroupId int64
-		Limit   int64
-		Offset  int64
+		TaskId int64
+		Limit  int64
+		Offset int64
 	}
 	AnswerServiceCreateOpts struct {
-		GroupId int64
-		Comment string
+		TaskId  int64
+		UserId  int64
+		Comment *string
+		Files   []int64
 	}
 	AnswerServiceUpdateOpts struct {
 		Id      int64
-		GroupId int64
 		Comment string
+		Files   []int64
 	}
 )
 
@@ -69,16 +79,35 @@ type (
 )
 
 type (
-	UserServiceCreateOpts struct {
-		GroupId    int64
-		Email      string
-		Password   string
-		FirstName  string
-		LastName   string
-		MiddleName *string
+	MarkServiceGetListByUserIdOpts struct {
+		UserId int64
+		Limit  int64
+		Offset int64
 	}
-	UserServiceUpdateOpts struct {
+	MarkServiceCreateOpts struct {
+		AnswerId int64
+		Mark     int64
+		Comment  *string
 	}
-	UserServiceGetByCredentialsOpts struct {
+	MarkServiceUpdateOpts struct {
+		Id      int64
+		Mark    int64
+		Comment *string
+	}
+)
+
+type (
+	UserServiceGetListByRoleIdOpts struct {
+		RoleId int64
+		Limit  int64
+		Offset int64
+	}
+)
+
+type (
+	TaskLinksServiceCreateOpts struct {
+		TaskId  int64
+		UserId  *int64
+		GroupId *int64
 	}
 )
