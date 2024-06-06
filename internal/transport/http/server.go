@@ -8,6 +8,7 @@ import (
 	"backend/internal/transport/http/v1/fileshandlers"
 	"backend/internal/transport/http/v1/groupshandlers"
 	"backend/internal/transport/http/v1/markshandlers"
+	"backend/internal/transport/http/v1/statisticshandlers"
 	"backend/internal/transport/http/v1/taskshandlers"
 	"backend/internal/transport/http/v1/usershandlers"
 	"context"
@@ -20,29 +21,31 @@ import (
 )
 
 type Config struct {
-	Addr          string
-	TaskService   services.TaskService
-	AnswerService services.AnswerService
-	FileService   services.FileService
-	GroupService  services.GroupService
-	UserService   services.UserService
-	AuthService   services.AuthService
-	MarkService   services.MarkService
-	JWTConfig     models.JWTConfig
-	Log           *zerolog.Logger
+	Addr              string
+	TaskService       services.TaskService
+	AnswerService     services.AnswerService
+	FileService       services.FileService
+	GroupService      services.GroupService
+	UserService       services.UserService
+	AuthService       services.AuthService
+	MarkService       services.MarkService
+	StatisticsService services.StatisticsService
+	JWTConfig         models.JWTConfig
+	Log               *zerolog.Logger
 }
 
 type Server struct {
 	app  *fiber.App
 	addr string
 
-	taskService   services.TaskService
-	answerService services.AnswerService
-	fileService   services.FileService
-	groupService  services.GroupService
-	userService   services.UserService
-	authService   services.AuthService
-	markService   services.MarkService
+	taskService       services.TaskService
+	answerService     services.AnswerService
+	fileService       services.FileService
+	groupService      services.GroupService
+	userService       services.UserService
+	authService       services.AuthService
+	markService       services.MarkService
+	statisticsService services.StatisticsService
 
 	jwtConfig models.JWTConfig
 
@@ -51,17 +54,18 @@ type Server struct {
 
 func NewServer(cfg *Config) *Server {
 	s := &Server{
-		app:           nil,
-		addr:          cfg.Addr,
-		taskService:   cfg.TaskService,
-		answerService: cfg.AnswerService,
-		fileService:   cfg.FileService,
-		groupService:  cfg.GroupService,
-		userService:   cfg.UserService,
-		authService:   cfg.AuthService,
-		markService:   cfg.MarkService,
-		jwtConfig:     cfg.JWTConfig,
-		log:           cfg.Log,
+		app:               nil,
+		addr:              cfg.Addr,
+		taskService:       cfg.TaskService,
+		answerService:     cfg.AnswerService,
+		fileService:       cfg.FileService,
+		groupService:      cfg.GroupService,
+		userService:       cfg.UserService,
+		authService:       cfg.AuthService,
+		markService:       cfg.MarkService,
+		statisticsService: cfg.StatisticsService,
+		jwtConfig:         cfg.JWTConfig,
+		log:               cfg.Log,
 	}
 
 	s.app = fiber.New(fiber.Config{
@@ -107,6 +111,10 @@ func (s *Server) init() {
 	markshandlers.New(v1Group, markshandlers.Config{MarkService: s.markService, JWTConfig: s.jwtConfig}, s.log)
 	usershandlers.New(v1Group, usershandlers.Config{UserService: s.userService, JWTConfig: s.jwtConfig}, s.log)
 	groupshandlers.New(v1Group, groupshandlers.Config{GroupService: s.groupService}, s.log)
+	statisticshandlers.New(v1Group, statisticshandlers.Config{
+		StatisticsService: s.statisticsService,
+		JWTConfig:         s.jwtConfig,
+	}, s.log)
 }
 
 func (s *Server) errorHandler(ctx *fiber.Ctx, err error) error {

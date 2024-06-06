@@ -40,6 +40,7 @@ func Run(cfg *config.Config) {
 	usersRepo := repos.NewUsersRepo(pgConn)
 	authRepo := repos.NewAuthRepo(pgConn)
 	marksRepo := repos.NewMarksRepo(pgConn)
+	statisticsRepo := repos.NewStatisticsRepo(pgConn)
 
 	fileService := services.NewFileServiceImpl(filesRepo, log)
 	answerService := services.NewAnswerServiceImpl(answersRepo, fileService, log)
@@ -48,6 +49,7 @@ func Run(cfg *config.Config) {
 	taskService := services.NewTaskServiceImpl(tasksRepo, fileService, taskLinksService, log)
 	userService := services.NewUserServiceImpl(usersRepo, log)
 	marksService := services.NewMarkServiceImpl(marksRepo, log)
+	statisticsService := services.NewStatisticsServiceImpl(statisticsRepo)
 	authService := services.NewAuthServiceImpl(
 		authRepo,
 		models.JWTConfig{
@@ -61,14 +63,15 @@ func Run(cfg *config.Config) {
 	)
 
 	server := http.NewServer(&http.Config{
-		Addr:          cfg.HTTPServer.Addr,
-		TaskService:   taskService,
-		AnswerService: answerService,
-		FileService:   fileService,
-		GroupService:  groupService,
-		UserService:   userService,
-		AuthService:   authService,
-		MarkService:   marksService,
+		Addr:              cfg.HTTPServer.Addr,
+		TaskService:       taskService,
+		AnswerService:     answerService,
+		FileService:       fileService,
+		GroupService:      groupService,
+		UserService:       userService,
+		AuthService:       authService,
+		MarkService:       marksService,
+		StatisticsService: statisticsService,
 		JWTConfig: models.JWTConfig{
 			JWTAccessExpirationTime:  cfg.JWT.JWTAccessTokenExpTime,
 			JWTRefreshExpirationTime: cfg.JWT.JWTRefreshTokenExpTime,

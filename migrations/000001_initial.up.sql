@@ -19,7 +19,7 @@ create table if not exists public.task_links
 
     constraint unique_user_task unique (user_id, task_id),
     constraint unique_group_task unique (group_id, task_id),
-    constraint not_null_user_group check ((user_id is not null or group_id is not null ))
+    constraint not_null_user_group check ((user_id is not null or group_id is not null))
 );
 
 create table if not exists public.answer
@@ -37,7 +37,7 @@ create table if not exists public.user
     id          bigserial primary key,
     group_id    bigint references public.group (id),
     role_id     bigint      not null references public.roles (id),
-    email       text        not null,
+    email       text unique not null,
     password    text        not null,
     first_name  text        not null,
     last_name   text        not null,

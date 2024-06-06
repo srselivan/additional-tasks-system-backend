@@ -131,3 +131,12 @@ type (
 		Name string
 	}
 )
+
+type (
+	GetStatisticsOpts struct {
+		Limit  int64
+		Offset int64
+		From   *time.Time
+		To     *time.Time
+	}
+)

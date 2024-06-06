@@ -2,7 +2,7 @@ package pg
 
 import (
 	"backend/internal/models"
-	"backend/internal/services/group/repo"
+	"backend/internal/repo"
 	"context"
 	"fmt"
 	"time"

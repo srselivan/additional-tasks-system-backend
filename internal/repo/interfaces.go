@@ -71,3 +71,7 @@ type GroupsRepo interface {
 	Update(ctx context.Context, opts GroupsRepoUpdateOpts) (models.Group, error)
 	Delete(ctx context.Context, id int64) error
 }
+
+type StatisticsRepo interface {
+	GetStatistics(ctx context.Context, opts GetStatisticsOpts) ([]models.Statistics, error)
+}
